@@ -71,7 +71,7 @@ tr.row{cursor:pointer}tr.row:hover td{background:var(--goldbg)}tr:last-child td{
 <body>
 <div class="wrap">
  <header>
-  <div><h1>Shop <span>Inventory</span></h1><div class="sub">Your products, stock and sales in one place</div></div>
+  <div><h1>Koniyakath <span>Hardwares</span></h1><div class="sub">Your products, stock and sales in one place</div></div>
   <button class="pri" id="newBtn">+ New Product</button>
  </header>
  <div class="stats" id="stats"></div>
@@ -82,10 +82,23 @@ tr.row{cursor:pointer}tr.row:hover td{background:var(--goldbg)}tr:last-child td{
  <div id="out"></div>
 </div>
 
+<!-- Product Form Modal -->
 <div class="ov" id="ovForm"><div class="md">
  <h2 id="fTitle">New Product</h2>
  <div class="f">
-  <div class="full ph"><div id="pv" class="pv">No photo</div><div><label>Product picture</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="pb" id="b1">Choose photo</button><button type="button" class="pb" id="b2">Take photo</button><input type="file" id="img" accept="image/*" hidden><input type="file" id="imgCam" accept="image/*" capture="environment" hidden></div></div></div>
+  <div class="full ph">
+    <div id="pv" class="pv">No photo</div>
+    <div>
+      <label>Product picture</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="pb" id="b1">Choose photo</button>
+        <button type="button" class="pb" id="b2">Take photo</button>
+        <button type="button" class="pb del" id="bDelPhoto" style="display:none">Remove photo</button>
+        <input type="file" id="img" accept="image/*" hidden>
+        <input type="file" id="imgCam" accept="image/*" capture="environment" hidden>
+      </div>
+    </div>
+  </div>
   <div class="full"><label>Product name</label><input id="name"></div>
   <div><label>Code</label><input id="code"></div>
   <div><label>Dealer</label><input id="dealer"></div>
@@ -99,6 +112,17 @@ tr.row{cursor:pointer}tr.row:hover td{background:var(--goldbg)}tr:last-child td{
  <div class="acts"><button id="cancel">Cancel</button><button class="pri" id="save">Save</button></div>
 </div></div>
 
+<!-- Laptop Webcam Capture Modal -->
+<div class="ov" id="ovCam"><div class="md" style="max-width:440px;text-align:center">
+  <h2>Take Photo</h2>
+  <video id="camVideo" autoplay playsinline style="width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover"></video>
+  <div class="acts" style="margin-top:14px">
+    <button id="camCancel">Cancel</button>
+    <button class="pri" id="camSnap">Capture Photo</button>
+  </div>
+</div></div>
+
+<!-- Product View Modal -->
 <div class="ov" id="ovView"><div class="md" id="vBody"></div></div>
 
 <script>
@@ -107,17 +131,35 @@ const SUPABASE_URL = 'https://lkwuxtriklrqdwlynkgn.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_xHhVYoUT4-hPCxF_oKXrPg_3mMOBGxV';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-var items = [], view = 'list', editId = null, photo = '', photoBlob = null;
+var items = [], view = 'list', editId = null, photo = '', photoBlob = null, mediaStream = null;
 var $ = function(i) { return document.getElementById(i); };
 var F = ['name', 'code', 'dealer', 'mrp', 'retail', 'purchase', 'stock', 'unit', 'sales'];
 
-function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-function money(n) { return '₹' + (Number(n) || 0).toLocaleString('en-IN'); }
-function left(p) { return p.remaining != null ? Number(p.remaining) : (Number(p.stock) || 0) - (Number(p.sales) || 0); }
-function units(p) { return '<span class="tag">' + left(p) + ' ' + esc(p.unit || '') + ' left</span>'; }
-function pic(p, cls) { return p.img ? '<img class="' + cls + '" src="' + p.img + '" alt="">' : '<div class="' + cls + '">' + esc((p.name || '?').charAt(0).toUpperCase()) + '</div>'; }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  });
+}
 
-// --- LOAD FROM SUPABASE ---
+function money(n) {
+  return '₹' + (Number(n) || 0).toLocaleString('en-IN');
+}
+
+function left(p) {
+  return p.remaining != null ? Number(p.remaining) : (Number(p.stock) || 0) - (Number(p.sales) || 0);
+}
+
+function units(p) {
+  return '<span class="tag">' + left(p) + ' ' + esc(p.unit || '') + ' left</span>';
+}
+
+function pic(p, cls) {
+  return p.img
+    ? '<img class="' + cls + '" src="' + p.img + '" alt="">'
+    : '<div class="' + cls + '">' + esc((p.name || '?').charAt(0).toUpperCase()) + '</div>';
+}
+
+// --- LOAD PRODUCTS FROM SUPABASE ---
 async function loadProducts() {
   $('out').innerHTML = '<div class="empty">Loading products...</div>';
   const { data, error } = await sb
@@ -126,7 +168,8 @@ async function loadProducts() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    alert('Error loading products: ' + error.message);
+    console.error('Supabase Load Error:', error);
+    $('out').innerHTML = '<div class="empty">Error loading products: ' + esc(error.message) + '</div>';
     return;
   }
 
@@ -147,25 +190,61 @@ async function loadProducts() {
   render();
 }
 
+// --- RENDER UI ---
 function render() {
   var t = $('q').value.toLowerCase();
-  var list = items.filter(function(p) { return (p.name + ' ' + p.code + ' ' + p.dealer).toLowerCase().indexOf(t) > -1; });
-  var val = items.reduce(function(a, p) { return a + Math.max(left(p), 0) * (Number(p.retail) || 0); }, 0);
-  var low = items.filter(function(p) { return left(p) <= 5; }).length;
-  
-  $('stats').innerHTML = '<div class="stat"><b>' + items.length + '</b><small>Products</small></div><div class="stat"><b>' + money(val) + '</b><small>Stock value (retail)</small></div><div class="stat"><b>' + low + '</b><small>Low stock (≤5 left)</small></div>';
-  
+  var list = items.filter(function(p) {
+    return (p.name + ' ' + p.code + ' ' + p.dealer).toLowerCase().indexOf(t) > -1;
+  });
+  var val = items.reduce(function(a, p) {
+    return a + Math.max(left(p), 0) * (Number(p.retail) || 0);
+  }, 0);
+  var low = items.filter(function(p) {
+    return left(p) <= 5;
+  }).length;
+
+  $('stats').innerHTML =
+    '<div class="stat"><b>' + items.length + '</b><small>Products</small></div>' +
+    '<div class="stat"><b>' + money(val) + '</b><small>Stock value (retail)</small></div>' +
+    '<div class="stat"><b>' + low + '</b><small>Low stock (≤5 left)</small></div>';
+
   if (!list.length) {
     $('out').innerHTML = '<div class="empty">' + (items.length ? 'No products match your search.' : 'No products yet. Tap “+ New Product” to add your first one.') + '</div>';
     return;
   }
+
   if (view === 'list') {
-    $('out').innerHTML = '<div class="tw"><table><thead><tr><th>Product</th><th>MRP</th><th>Retail</th><th>Purchase</th><th>Dealer</th><th>Left</th></tr></thead><tbody>' + list.map(function(p) { var l = left(p); return '<tr class="row" data-id="' + p.id + '"><td><div class="nm">' + pic(p, 'th') + '<div>' + esc(p.name) + '<div class="code">' + esc(p.code) + '</div></div></div></td><td>' + money(p.mrp) + '</td><td class="price">' + money(p.retail) + '</td><td>' + money(p.purchase) + '</td><td>' + esc(p.dealer) + '</td><td><span class="tag' + (l <= 5 ? ' low' : '') + '">' + l + ' ' + esc(p.unit || '') + '</span></td></tr>'; }).join('') + '</tbody></table></div>';
+    $('out').innerHTML =
+      '<div class="tw"><table><thead><tr><th>Product</th><th>MRP</th><th>Retail</th><th>Purchase</th><th>Dealer</th><th>Left</th></tr></thead><tbody>' +
+      list.map(function(p) {
+        var l = left(p);
+        return '<tr class="row" data-id="' + p.id + '">' +
+          '<td><div class="nm">' + pic(p, 'th') + '<div>' + esc(p.name) + '<div class="code">' + esc(p.code) + '</div></div></div></td>' +
+          '<td>' + money(p.mrp) + '</td>' +
+          '<td class="price">' + money(p.retail) + '</td>' +
+          '<td>' + money(p.purchase) + '</td>' +
+          '<td>' + esc(p.dealer) + '</td>' +
+          '<td><span class="tag' + (l <= 5 ? ' low' : '') + '">' + l + ' ' + esc(p.unit || '') + '</span></td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
   } else {
-    $('out').innerHTML = '<div class="grid">' + list.map(function(p) { return '<div class="g" data-id="' + p.id + '">' + pic(p, 'im') + '<div class="in"><div style="font-weight:500">' + esc(p.name) + '</div><div class="code">' + esc(p.code) + '</div><div class="price">' + money(p.retail) + ' <span class="code" style="text-decoration:line-through">' + money(p.mrp) + '</span></div><div>' + units(p) + '</div></div></div>'; }).join('') + '</div>';
+    $('out').innerHTML =
+      '<div class="grid">' +
+      list.map(function(p) {
+        return '<div class="g" data-id="' + p.id + '">' + pic(p, 'im') +
+          '<div class="in">' +
+          '<div style="font-weight:500">' + esc(p.name) + '</div>' +
+          '<div class="code">' + esc(p.code) + '</div>' +
+          '<div class="price">' + money(p.retail) + ' <span class="code" style="text-decoration:line-through">' + money(p.mrp) + '</span></div>' +
+          '<div>' + units(p) + '</div>' +
+          '</div></div>';
+      }).join('') +
+      '</div>';
   }
 }
 
+// --- FORM HANDLING ---
 function openForm(id) {
   editId = id || null;
   var p = items.filter(function(x) { return x.id === id; })[0] || {};
@@ -181,21 +260,26 @@ function openForm(id) {
 }
 
 function setPv() {
-  $('pv').outerHTML = photo ? '<img id="pv" src="' + photo + '" alt="">' : '<div id="pv" class="pv">No photo</div>';
+  if (photo) {
+    $('pv').outerHTML = '<img id="pv" src="' + photo + '" alt="">';
+    $('bDelPhoto').style.display = 'inline-block';
+  } else {
+    $('pv').outerHTML = '<div id="pv" class="pv">No photo</div>';
+    $('bDelPhoto').style.display = 'none';
+  }
 }
 
-function onPick(e) {
-  var f = e.target.files[0];
-  if (!f) return;
+function processImageFile(f) {
   var r = new FileReader();
   r.onload = function() {
     var im = new Image();
     im.onload = function() {
-      var s = Math.min(1, 600 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      var s = Math.min(1, 600 / Math.max(im.width, im.height));
+      var c = document.createElement('canvas');
       c.width = im.width * s;
       c.height = im.height * s;
       c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-      photo = c.toDataURL('image/jpeg', .75);
+      photo = c.toDataURL('image/jpeg', 0.75);
       c.toBlob(function(blob) { photoBlob = blob; }, 'image/jpeg', 0.75);
       setPv();
     };
@@ -204,23 +288,96 @@ function onPick(e) {
   };
   r.onerror = function() { alert('Could not open this file.'); };
   r.readAsDataURL(f);
+}
+
+function onPick(e) {
+  var f = e.target.files[0];
+  if (!f) return;
+  processImageFile(f);
   e.target.value = '';
 }
 
 $('img').onchange = onPick;
 $('imgCam').onchange = onPick;
 $('b1').onclick = function() { $('img').click(); };
-$('b2').onclick = function() { $('imgCam').click(); };
 
-function fromFiles(fl) { if (fl && fl[0] && /^image\//.test(fl[0].type)) onPick({ target: { files: fl, value: '' } }); }
-document.addEventListener('paste', function(e) { if ($('ovForm').classList.contains('show')) fromFiles(e.clipboardData && e.clipboardData.files); });
+// Take Photo button: Uses native camera on mobile, opens webcam modal on laptops/desktops
+$('b2').onclick = async function() {
+  var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMobile) {
+    $('imgCam').click();
+  } else {
+    // Laptop / Desktop Webcam Modal
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      $('camVideo').srcObject = mediaStream;
+      $('ovCam').classList.add('show');
+    } catch (err) {
+      // Fallback to file input if webcam permission is denied or unavailable
+      $('imgCam').click();
+    }
+  }
+};
+
+// Remove Photo button
+$('bDelPhoto').onclick = function() {
+  photo = '';
+  photoBlob = null;
+  setPv();
+};
+
+// Webcam modal controls
+$('camCancel').onclick = function() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  $('ovCam').classList.remove('show');
+};
+
+$('camSnap').onclick = function() {
+  var video = $('camVideo');
+  var c = document.createElement('canvas');
+  c.width = video.videoWidth || 640;
+  c.height = video.videoHeight || 480;
+  var ctx = c.getContext('2d');
+  ctx.drawImage(video, 0, 0, c.width, c.height);
+  
+  photo = c.toDataURL('image/jpeg', 0.75);
+  c.toBlob(function(blob) { photoBlob = blob; }, 'image/jpeg', 0.75);
+  setPv();
+
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  $('ovCam').classList.remove('show');
+};
+
+function fromFiles(fl) {
+  if (fl && fl[0] && /^image\//.test(fl[0].type)) {
+    processImageFile(fl[0]);
+  }
+}
+
+document.addEventListener('paste', function(e) {
+  if ($('ovForm').classList.contains('show')) {
+    fromFiles(e.clipboardData && e.clipboardData.files);
+  }
+});
 $('ovForm').addEventListener('dragover', function(e) { e.preventDefault(); });
-$('ovForm').addEventListener('drop', function(e) { e.preventDefault(); fromFiles(e.dataTransfer && e.dataTransfer.files); });
+$('ovForm').addEventListener('drop', function(e) {
+  e.preventDefault();
+  fromFiles(e.dataTransfer && e.dataTransfer.files);
+});
 
-// --- SAVE TO SUPABASE ---
+// --- SAVE (INSERT / UPDATE) TO SUPABASE ---
 $('save').onclick = async function() {
   var name = $('name').value.trim();
-  if (!name) { alert('Please enter the product name.'); return; }
+  if (!name) {
+    alert('Please enter the product name.');
+    return;
+  }
 
   var saveBtn = $('save');
   saveBtn.disabled = true;
@@ -229,6 +386,7 @@ $('save').onclick = async function() {
   try {
     let imageUrl = photo;
 
+    // Upload image to Supabase Storage if a new picture was chosen/captured
     if (photoBlob) {
       const filePath = `public/${Date.now()}.jpg`;
       const { error: uploadErr } = await sb.storage
@@ -241,6 +399,8 @@ $('save').onclick = async function() {
         .from('product-images')
         .getPublicUrl(filePath);
       imageUrl = urlData.publicUrl;
+    } else if (!photo) {
+      imageUrl = null; // Cleared photo
     }
 
     const payload = {
@@ -253,7 +413,7 @@ $('save').onclick = async function() {
       stock: Number($('stock').value) || 0,
       unit: $('unit').value,
       sales: Number($('sales').value) || 0,
-      image_url: imageUrl || null
+      image_url: imageUrl
     };
 
     if (editId) {
@@ -267,6 +427,7 @@ $('save').onclick = async function() {
     $('ovForm').classList.remove('show');
     await loadProducts();
   } catch (err) {
+    console.error('Supabase Save Error:', err);
     alert('Save failed: ' + err.message);
   } finally {
     saveBtn.disabled = false;
@@ -274,11 +435,28 @@ $('save').onclick = async function() {
   }
 };
 
+// --- VIEW & DELETE PRODUCT ---
 function show(id) {
   var p = items.filter(function(x) { return x.id === id; })[0];
   if (!p) return;
   var l = left(p);
-  $('vBody').innerHTML = (p.img ? '<img class="big" src="' + p.img + '" alt="">' : '') + '<h2 style="margin-top:14px">' + esc(p.name) + '</h2><div class="code">Code: ' + esc(p.code) + ' · Dealer: ' + esc(p.dealer) + '</div><div class="dl"><div><small>MRP</small>' + money(p.mrp) + '</div><div><small>Retail price</small><span class="price">' + money(p.retail) + '</span></div><div><small>Total stock</small>' + (p.stock || 0) + ' ' + esc(p.unit || '') + '</div><div><small>Sales</small>' + (p.sales || 0) + ' ' + esc(p.unit || '') + '</div><div><small>Remaining</small><span style="color:var(--' + (l <= 5 ? 'bad' : 'good') + ')">' + l + ' ' + esc(p.unit || '') + '</span></div><div><small>Purchase rate</small>' + money(p.purchase) + '</div></div><div class="acts"><button class="del" data-del="' + p.id + '">Delete</button><button data-edit="' + p.id + '">Edit</button><button id="close">Close</button></div>';
+  $('vBody').innerHTML =
+    (p.img ? '<img class="big" src="' + p.img + '" alt="">' : '') +
+    '<h2 style="margin-top:14px">' + esc(p.name) + '</h2>' +
+    '<div class="code">Code: ' + esc(p.code) + ' · Dealer: ' + esc(p.dealer) + '</div>' +
+    '<div class="dl">' +
+      '<div><small>MRP</small>' + money(p.mrp) + '</div>' +
+      '<div><small>Retail price</small><span class="price">' + money(p.retail) + '</span></div>' +
+      '<div><small>Total stock</small>' + (p.stock || 0) + ' ' + esc(p.unit || '') + '</div>' +
+      '<div><small>Sales</small>' + (p.sales || 0) + ' ' + esc(p.unit || '') + '</div>' +
+      '<div><small>Remaining</small><span style="color:var(--' + (l <= 5 ? 'bad' : 'good') + ')">' + l + ' ' + esc(p.unit || '') + '</span></div>' +
+      '<div><small>Purchase rate</small>' + money(p.purchase) + '</div>' +
+    '</div>' +
+    '<div class="acts">' +
+      '<button class="del" data-del="' + p.id + '">Delete</button>' +
+      '<button data-edit="' + p.id + '">Edit</button>' +
+      '<button id="close">Close</button>' +
+    '</div>';
   $('ovView').classList.add('show');
 }
 
@@ -304,7 +482,7 @@ $('ovView').onclick = async function(e) {
   }
 };
 
-// Load data immediately on page load
+// Initial load
 loadProducts();
 </script>
 </body>
