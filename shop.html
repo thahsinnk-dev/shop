@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shop Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f3ed;--card:#fff;--ink:#1c1a16;--mute:#7a7467;--line:#e5dfd2;--gold:#a8791f;--goldbg:#f3e9d0;--bad:#b3392b;--good:#2f7a4d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e0e0f;--card:#18181a;--ink:#f1ece0;--mute:#8f897b;--line:#2a2a2d;--gold:#d4a84b;--goldbg:#2a2315;--bad:#e5695a;--good:#5cc388}}
+:root[data-theme="dark"]{--bg:#0e0e0f;--card:#18181a;--ink:#f1ece0;--mute:#8f897b;--line:#2a2a2d;--gold:#d4a84b;--goldbg:#2a2315;--bad:#e5695a;--good:#5cc388}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+h1{font:600 28px 'Playfair Display',Georgia,serif;margin:0;letter-spacing:.3px}
+h1 span{color:var(--gold)}
+.sub{color:var(--mute);font-size:13px;margin-top:2px}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 16px}
+.pri{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:600;padding:11px 20px;border-radius:12px;box-shadow:0 6px 18px rgba(168,121,31,.28)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pri{color:#1a1405}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat b{display:block;font:600 22px 'Playfair Display',Georgia,serif;color:var(--gold)}
+.stat small{color:var(--mute)}
+.bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.bar input{flex:1;min-width:180px}
+input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,select:focus{outline:2px solid var(--gold);outline-offset:0}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{border:0;border-radius:0;background:none;color:var(--mute)}
+.seg button.on{background:var(--goldbg);color:var(--gold);font-weight:600}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--mute);padding:12px 14px;border-bottom:1px solid var(--line)}
+td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.row{cursor:pointer}tr.row:hover td{background:var(--goldbg)}tr:last-child td{border-bottom:0}
+.th{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--goldbg);display:flex;align-items:center;justify-content:center;color:var(--gold);font-weight:600}
+.nm{display:flex;align-items:center;gap:12px;font-weight:500}
+.code{color:var(--mute);font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.g{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.g:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.18)}
+.g .im{aspect-ratio:1;width:100%;object-fit:cover;display:flex;align-items:center;justify-content:center;background:var(--goldbg);color:var(--gold);font:600 44px 'Playfair Display',Georgia,serif}
+.g .in{padding:12px 14px}
+.price{color:var(--gold);font-weight:600}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;background:var(--goldbg);color:var(--gold);margin:2px 4px 0 0}
+.low{color:var(--bad);background:transparent;border:1px solid var(--bad)}
+.empty{text-align:center;color:var(--mute);padding:60px 16px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 14px;z-index:20}
+.ov.show{display:flex}
+.md{background:var(--card);border:1px solid var(--line);border-radius:18px;width:100%;max-width:560px;padding:22px}
+.md h2{font:600 22px 'Playfair Display',Georgia,serif;margin:0 0 16px}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f label{font-size:12px;color:var(--mute);display:block;margin-bottom:4px}
+.f .full{grid-column:1/-1}
+.sec{grid-column:1/-1;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--gold);margin-top:6px}
+.ph{display:flex;align-items:center;gap:14px}
+.ph img,.ph .pv{width:76px;height:76px;border-radius:14px;object-fit:cover;background:var(--goldbg);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:12px;text-align:center}
+.acts{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.dl div{background:var(--bg);border-radius:10px;padding:10px 12px}.dl small{color:var(--mute);display:block}
+.big{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;background:var(--goldbg)}
+.del{color:var(--bad);border-color:var(--bad)}
+.pb{position:relative;overflow:hidden;display:inline-block;cursor:pointer;border:1px solid var(--gold);color:var(--gold)!important;border-radius:10px;padding:9px 14px;font-size:14px!important;margin:0!important;background:var(--goldbg)}
+.pb input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;padding:0;border:0;font-size:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header>
+  <div><h1>Shop <span>Inventory</span></h1><div class="sub">Your products, stock and sales in one place</div></div>
+  <button class="pri" id="newBtn">+ New Product</button>
+ </header>
+ <div class="stats" id="stats"></div>
+ <div class="bar">
+  <input id="q" placeholder="Search by name, code or dealer…">
+  <div class="seg"><button id="vl" class="on">List</button><button id="vg">Gallery</button></div>
+ </div>
+ <div id="out"></div>
+</div>
+
+<div class="ov" id="ovForm"><div class="md">
+ <h2 id="fTitle">New Product</h2>
+ <div class="f">
+  <div class="full ph"><div id="pv" class="pv">No photo</div><div><label>Product picture</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="pb" id="b1">Choose photo</button><button type="button" class="pb" id="b2">Take photo</button><input type="file" id="img" accept="image/*" hidden><input type="file" id="imgCam" accept="image/*" capture="environment" hidden></div></div></div>
+  <div class="full"><label>Product name</label><input id="name"></div>
+  <div><label>Code</label><input id="code"></div>
+  <div><label>Dealer</label><input id="dealer"></div>
+  <div><label>MRP (₹)</label><input id="mrp" type="number" min="0" step="any" inputmode="decimal"></div>
+  <div><label>Retail price (₹)</label><input id="retail" type="number" min="0" step="any" inputmode="decimal"></div>
+  <div class="full"><label>Purchase rate (₹)</label><input id="purchase" type="number" min="0" step="any" inputmode="decimal"></div>
+  <div><label>Total stock</label><input id="stock" type="number" min="0" step="any" inputmode="decimal"></div>
+  <div><label>Unit</label><select id="unit"><option>meter</option><option>pieces</option><option>roll</option><option>packet</option><option>kg</option><option>ml</option><option>boxes</option></select></div>
+  <div class="full"><label>Sales (sold, in the same unit)</label><input id="sales" type="number" min="0" step="any" inputmode="decimal"></div>
+ </div>
+ <div class="acts"><button id="cancel">Cancel</button><button class="pri" id="save">Save</button></div>
+</div></div>
+
+<div class="ov" id="ovView"><div class="md" id="vBody"></div></div>
+
+<script>
+var KEY='shop_products_v1',items=[],view='list',editId=null,photo='';
+try{items=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){items=[]}
+var $=function(i){return document.getElementById(i)};
+var F=['name','code','dealer','mrp','retail','purchase','stock','unit','sales'];
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){alert('Storage is full. Try smaller pictures or delete old items.')}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function money(n){return '₹'+(Number(n)||0).toLocaleString('en-IN')}
+function left(p){return (Number(p.stock)||0)-(Number(p.sales)||0)}
+function units(p){return '<span class="tag">'+left(p)+' '+esc(p.unit||'')+' left</span>'}
+function pic(p,cls){return p.img?'<img class="'+cls+'" src="'+p.img+'" alt="">':'<div class="'+cls+'">'+esc((p.name||'?').charAt(0).toUpperCase())+'</div>'}
+function render(){
+ var t=$('q').value.toLowerCase();
+ var list=items.filter(function(p){return (p.name+' '+p.code+' '+p.dealer).toLowerCase().indexOf(t)>-1});
+ var val=items.reduce(function(a,p){return a+Math.max(left(p),0)*(Number(p.retail)||0)},0);
+ var low=items.filter(function(p){return left(p)<=5}).length;
+ $('stats').innerHTML='<div class="stat"><b>'+items.length+'</b><small>Products</small></div><div class="stat"><b>'+money(val)+'</b><small>Stock value (retail)</small></div><div class="stat"><b>'+low+'</b><small>Low stock (≤5 left)</small></div>';
+ if(!list.length){$('out').innerHTML='<div class="empty">'+(items.length?'No products match your search.':'No products yet. Tap “+ New Product” to add your first one.')+'</div>';return}
+ if(view==='list'){
+  $('out').innerHTML='<div class="tw"><table><thead><tr><th>Product</th><th>MRP</th><th>Retail</th><th>Purchase</th><th>Dealer</th><th>Left</th></tr></thead><tbody>'+list.map(function(p){var l=left(p);return '<tr class="row" data-id="'+p.id+'"><td><div class="nm">'+pic(p,'th')+'<div>'+esc(p.name)+'<div class="code">'+esc(p.code)+'</div></div></div></td><td>'+money(p.mrp)+'</td><td class="price">'+money(p.retail)+'</td><td>'+money(p.purchase)+'</td><td>'+esc(p.dealer)+'</td><td><span class="tag'+(l<=5?' low':'')+'">'+l+' '+esc(p.unit||'')+'</span></td></tr>'}).join('')+'</tbody></table></div>';
+ }else{
+  $('out').innerHTML='<div class="grid">'+list.map(function(p){return '<div class="g" data-id="'+p.id+'">'+pic(p,'im')+'<div class="in"><div style="font-weight:500">'+esc(p.name)+'</div><div class="code">'+esc(p.code)+'</div><div class="price">'+money(p.retail)+' <span class="code" style="text-decoration:line-through">'+money(p.mrp)+'</span></div><div>'+units(p)+'</div></div></div>'}).join('')+'</div>';
+ }
+}
+function openForm(id){
+ editId=id||null;var p=items.filter(function(x){return x.id===id})[0]||{};
+ F.forEach(function(k){$(k).value=p[k]==null?'':p[k]});if(!$('unit').value)$('unit').value='pieces';
+ photo=p.img||'';$('img').value='';setPv();
+ $('fTitle').textContent=id?'Edit Product':'New Product';
+ $('ovView').classList.remove('show');$('ovForm').classList.add('show');
+}
+function setPv(){$('pv').outerHTML=photo?'<img id="pv" src="'+photo+'" alt="">':'<div id="pv" class="pv">No photo</div>'}
+function onPick(e){
+ var f=e.target.files[0];if(!f)return;
+ var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){
+  var s=Math.min(1,600/Math.max(im.width,im.height)),c=document.createElement('canvas');
+  c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+  photo=c.toDataURL('image/jpeg',.75);setPv()};im.onerror=function(){alert('Could not read this picture. Please try a different one.')};im.src=r.result};r.onerror=function(){alert('Could not open this file.')};r.readAsDataURL(f);e.target.value=''
+}
+$('img').onchange=onPick;$('imgCam').onchange=onPick;
+$('b1').onclick=function(){$('img').click()};$('b2').onclick=function(){$('imgCam').click()};
+function fromFiles(fl){if(fl&&fl[0]&&/^image\//.test(fl[0].type))onPick({target:{files:fl,value:''}})}
+document.addEventListener('paste',function(e){if($('ovForm').classList.contains('show'))fromFiles(e.clipboardData&&e.clipboardData.files)});
+$('ovForm').addEventListener('dragover',function(e){e.preventDefault()});
+$('ovForm').addEventListener('drop',function(e){e.preventDefault();fromFiles(e.dataTransfer&&e.dataTransfer.files)});
+$('save').onclick=function(){
+ var p={img:photo};F.forEach(function(k){p[k]=$(k).value.trim()});
+ if(!p.name){alert('Please enter the product name.');return}
+ if(editId){p.id=editId;items=items.map(function(x){return x.id===editId?p:x})}else{p.id='p'+Date.now();items.unshift(p)}
+ persist();$('ovForm').classList.remove('show');render();
+};
+function show(id){
+ var p=items.filter(function(x){return x.id===id})[0];if(!p)return;
+ var l=left(p);
+ $('vBody').innerHTML=(p.img?'<img class="big" src="'+p.img+'" alt="">':'')+'<h2 style="margin-top:14px">'+esc(p.name)+'</h2><div class="code">Code: '+esc(p.code)+' · Dealer: '+esc(p.dealer)+'</div><div class="dl"><div><small>MRP</small>'+money(p.mrp)+'</div><div><small>Retail price</small><span class="price">'+money(p.retail)+'</span></div><div><small>Total stock</small>'+(p.stock||0)+' '+esc(p.unit||'')+'</div><div><small>Sales</small>'+(p.sales||0)+' '+esc(p.unit||'')+'</div><div><small>Remaining</small><span style="color:var(--'+(l<=5?'bad':'good')+')">'+l+' '+esc(p.unit||'')+'</span></div><div><small>Purchase rate</small>'+money(p.purchase)+'</div></div><div class="acts"><button class="del" data-del="'+p.id+'">Delete</button><button data-edit="'+p.id+'">Edit</button><button id="close">Close</button></div>';
+ $('ovView').classList.add('show');
+}
+$('newBtn').onclick=function(){openForm()};
+$('cancel').onclick=function(){$('ovForm').classList.remove('show')};
+$('q').oninput=render;
+$('vl').onclick=function(){view='list';$('vl').className='on';$('vg').className='';render()};
+$('vg').onclick=function(){view='grid';$('vg').className='on';$('vl').className='';render()};
+$('out').onclick=function(e){var r=e.target.closest('[data-id]');if(r)show(r.dataset.id)};
+$('ovView').onclick=function(e){
+ var t=e.target;
+ if(t.id==='close'||t===$('ovView'))$('ovView').classList.remove('show');
+ if(t.dataset.edit)openForm(t.dataset.edit);
+ if(t.dataset.del&&confirm('Delete this product?')){items=items.filter(function(x){return x.id!==t.dataset.del});persist();$('ovView').classList.remove('show');render()}
+};
+render();
+</script>
+</body>
+</html>
